@@ -1,8 +1,6 @@
-package com.capisite.backend.repositories;
+package com.capisite.backend.modules.products;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import com.capisite.backend.domain.products.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 

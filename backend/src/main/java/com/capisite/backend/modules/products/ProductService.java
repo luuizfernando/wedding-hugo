@@ -1,12 +1,10 @@
-package com.capisite.backend.services;
+package com.capisite.backend.modules.products;
 
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.capisite.backend.domain.products.Product;
-import com.capisite.backend.domain.products.dto.UpdateProductDTO;
-import com.capisite.backend.repositories.ProductRepository;
+import com.capisite.backend.modules.products.dto.UpdateProductDTO;
 
 import jakarta.persistence.EntityNotFoundException;
 

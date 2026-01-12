@@ -1,4 +1,4 @@
-package com.capisite.backend.domain.products.dto;
+package com.capisite.backend.modules.products.dto;
 
 public record UpdateProductDTO(
     String name,

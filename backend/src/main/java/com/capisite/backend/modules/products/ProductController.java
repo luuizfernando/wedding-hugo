@@ -1,4 +1,4 @@
-package com.capisite.backend.controllers;
+package com.capisite.backend.modules.products;
 
 import java.util.List;
 
@@ -10,9 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import com.capisite.backend.domain.products.Product;
-import com.capisite.backend.services.ProductService;
 
 @RestController
 @RequestMapping("/products")

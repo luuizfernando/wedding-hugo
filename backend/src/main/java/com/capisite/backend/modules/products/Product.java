@@ -1,4 +1,4 @@
-package com.capisite.backend.domain.products;
+package com.capisite.backend.modules.products;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
