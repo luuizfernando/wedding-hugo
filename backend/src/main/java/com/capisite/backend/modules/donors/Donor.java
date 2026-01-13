@@ -29,10 +29,14 @@ public class Donor {
     @GeneratedValue(strategy = GenerationType.UUID)
     @EqualsAndHashCode.Include
     private UUID id;
+
+    @Column(name = "external_id")
+    private String externalId;
+
     private String name;
     private String email;
 
-    @Column(nullable = false, unique = true) 
+    @Column(nullable = false, unique = true)
     private String document;
 
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -49,10 +53,10 @@ public class Donor {
         if (this.createdAt == null) {
             this.createdAt = LocalDateTime.now();
         }
-        
+
         if (this.document != null) {
             this.document = this.document.replaceAll("\\D", "");
         }
     }
-    
+
 }

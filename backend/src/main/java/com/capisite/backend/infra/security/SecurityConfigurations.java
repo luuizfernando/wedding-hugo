@@ -1,4 +1,4 @@
-package com.capisite.backend.shared.security;
+package com.capisite.backend.infra.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
