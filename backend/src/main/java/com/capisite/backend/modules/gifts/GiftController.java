@@ -1,4 +1,4 @@
-package com.capisite.backend.modules.products;
+package com.capisite.backend.modules.gifts;
 
 import java.util.List;
 
@@ -13,29 +13,29 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/products")
-public class ProductController {
+public class GiftController {
 
-    private final ProductService productService;
+    private final GiftService giftService;
     
-    public ProductController(ProductService productService) {
-        this.productService = productService;
+    public GiftController(GiftService giftService) {
+        this.giftService = giftService;
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> getAllProducts() {
-        List<Product> products = productService.getAllProducts();
+    public ResponseEntity<List<Gift>> getAllProducts() {
+        List<Gift> products = giftService.getAllProducts();
         return ResponseEntity.ok(products);
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        Product product = productService.getProductById(id);
+    public ResponseEntity<Gift> getProductById(@PathVariable Long id) {
+        Gift product = giftService.getProductById(id);
         return ResponseEntity.ok(product);
     }
 
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody Product product) {
-        Product createdProduct = productService.createProduct(product);
+    public ResponseEntity<Gift> createProduct(@RequestBody Gift product) {
+        Gift createdProduct = giftService.createProduct(product);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
     }
 

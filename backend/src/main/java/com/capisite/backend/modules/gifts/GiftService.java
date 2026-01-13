@@ -1,37 +1,37 @@
-package com.capisite.backend.modules.products;
+package com.capisite.backend.modules.gifts;
 
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.capisite.backend.modules.products.dto.UpdateProductDTO;
+import com.capisite.backend.modules.gifts.dto.UpdateGiftDTO;
 
 import jakarta.persistence.EntityNotFoundException;
 
 @Service
-public class ProductService {
+public class GiftService {
 
-    private final ProductRepository productRepository;
+    private final GiftRepository giftRepository;
 
-    public ProductService(ProductRepository productRepository) {
-        this.productRepository = productRepository;
+    public GiftService(GiftRepository giftRepository) {
+        this.giftRepository = giftRepository;
     }
 
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    public List<Gift> getAllProducts() {
+        return giftRepository.findAll();
     }
 
-    public Product getProductById(Long id) {
-        return productRepository.findById(id)
+    public Gift getProductById(Long id) {
+        return giftRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Produto com ID " + id + " não foi encontrado"));
     }
 
-    public Product createProduct(Product product) {
-        return productRepository.save(product);
+    public Gift createProduct(Gift product) {
+        return giftRepository.save(product);
     }
 
-    public Product updateProduct(Long id, UpdateProductDTO dto) {
-        Product product = productRepository.findById(id)
+    public Gift updateProduct(Long id, UpdateGiftDTO dto) {
+        Gift product = giftRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Produto com ID " + id + " não foi encontrado"));
 
         if (dto.name() != null) {
@@ -47,11 +47,11 @@ public class ProductService {
             product.setImage(dto.image());
         }
 
-        return productRepository.save(product);
+        return giftRepository.save(product);
     }
 
     public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
+        giftRepository.deleteById(id);
     }
 
 }
