@@ -28,105 +28,133 @@ public class PaymentService {
 
     @Transactional
     public Payment createPayment(CreateDonationDTO data) {
+        Donor donor = setupDonor(data);
+
+        Payment payment = initializePayment(donor, data);
+
+        try {
+            PaymentGetResponseDto asaasResponse;
+
+            if ("CREDIT_CARD".equalsIgnoreCase(data.billingType())) {
+                asaasResponse = processCreditCardPayment(donor, data);
+            } else if ("PIX".equalsIgnoreCase(data.billingType())) {
+                asaasResponse = processPixPayment(donor, data);
+            } else {
+                throw new IllegalArgumentException("Método de pagamento não suportado: " + data.billingType());
+            }
+
+            updatePixQrCodeLink(payment, asaasResponse);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Falha na integração com Asaas: " + e.getMessage(), e);
+        }
+
+        return paymentRepository.save(payment);
+    }
+
+    // --- Métodos Auxiliares ---
+    private Donor setupDonor(CreateDonationDTO data) {
         Donor donor = donorService.findOrCreateDonor(
                 new CreateDonorDTO(data.name(), data.email(), data.document())
         );
+        ensureAsaasCustomer(donor);
+        return donor;
+    }
 
-        if (donor.getExternalId() == null) {
-            try {
-                CustomerSaveRequestDto customerSaveRequestDto = CustomerSaveRequestDto.builder()
-                        .name(donor.getName())
-                        .email(donor.getEmail())
-                        .cpfCnpj(donor.getDocument())
-                        .build();
-                CustomerGetResponseDto response = asaasSdk.customer.createNewCustomer(customerSaveRequestDto);
-                donor.setExternalId(response.getId());
-            } catch (Exception e) {
-                e.printStackTrace();
+    private void ensureAsaasCustomer(Donor donor) {
+        if (donor.getExternalId() != null) return;
 
-                System.out.println("⚠️ ERRO 400 NO ASAAS: Verifique se o CPF '" + donor.getDocument() + "' é válido!");
+        try {
+            CustomerSaveRequestDto request = CustomerSaveRequestDto.builder()
+                    .name(donor.getName())
+                    .email(donor.getEmail())
+                    .cpfCnpj(donor.getDocument())
+                    .build();
 
-                throw new RuntimeException("Erro ao criar cliente no Asaas SDK. Verifique CPF/Email. Detalhe: " + e.getMessage());
-            }
+            CustomerGetResponseDto response = asaasSdk.customer.createNewCustomer(request);
+            donor.setExternalId(response.getId());
+        } catch (Exception e) {
+            throw new RuntimeException("Erro ao criar cliente no Asaas: " + e.getMessage());
         }
+    }
 
+    private Payment initializePayment(Donor donor, CreateDonationDTO data) {
         Payment payment = new Payment();
         payment.setDonor(donor);
         payment.setAmount(data.amount());
         payment.setBillingType(data.billingType());
         payment.setMessage(data.message());
         payment.setStatus(PaymentStatus.PENDING);
-        payment = paymentRepository.save(payment);
-
-        try {
-            if ("CREDIT_CARD".equalsIgnoreCase(data.billingType())) {
-
-                CreditCardRequestDto creditCardRequestDto = CreditCardRequestDto.builder()
-                        .holderName(data.creditCardDetails().holderName())
-                        .number(data.creditCardDetails().number())
-                        .expiryMonth(data.creditCardDetails().expiryMonth())
-                        .expiryYear(data.creditCardDetails().expiryYear())
-                        .ccv(data.creditCardDetails().ccv())
-                        .build();
-
-                CreditCardHolderInfoRequestDto holderInfo = CreditCardHolderInfoRequestDto.builder()
-                        .name(donor.getName())
-                        .email(donor.getEmail())
-                        .cpfCnpj(donor.getDocument())
-                        .postalCode("00000000")
-                        .addressNumber("0")
-                        .phone("11999999999")
-                        .build();
-
-                PaymentSaveWithCreditCardRequestDto paymentSaveWithCreditCardRequestDto =
-                        PaymentSaveWithCreditCardRequestDto.builder()
-                                .customer(donor.getExternalId())
-                                .billingType(PaymentSaveWithCreditCardRequestBillingType.CREDIT_CARD)
-                                .value(data.amount().doubleValue())
-                                .dueDate(formatDate(LocalDate.now()))
-                                .description(data.message())
-                                .creditCard(creditCardRequestDto)
-                                .creditCardHolderInfo(holderInfo)
-                                .remoteIp("0.0.0.0")
-                                .build();
-
-                PaymentGetResponseDto response = asaasSdk.payment.createNewPaymentWithCreditCard(paymentSaveWithCreditCardRequestDto);
-
-                payment.setExternalReference(response.getId());
-                payment.setPaymentUrl(response.getInvoiceUrl());
-            }
-
-            if ("PIX".equalsIgnoreCase(data.billingType())) {
-                PaymentSaveRequestDto pixRequest = PaymentSaveRequestDto.builder()
-                        .customer(donor.getExternalId())
-                        .billingType(PaymentSaveRequestBillingType.PIX)
-                        .value(data.amount().doubleValue())
-                        .dueDate(formatDate(LocalDate.now()))
-                        .description(data.message())
-                        .build();
-
-                PaymentGetResponseDto response = asaasSdk.payment.createNewPayment(pixRequest);
-
-                payment.setExternalReference(response.getId());
-
-                try {
-                    PaymentPixQrCodeResponseDto pixQrCode = asaasSdk.payment.getQrCodeForPixPayments(response.getId());
-                    payment.setPaymentUrl(pixQrCode.getPayload());
-                } catch (RuntimeException e) {
-                    System.out.println("Erro ao buscar QR Code Pix: " + e.getMessage());
-                    payment.setPaymentUrl(response.getInvoiceUrl());
-                }
-            }
-
-        } catch (Exception e) {
-            throw new RuntimeException("Erro Asaas: " + e.getMessage());
-        }
-
         return paymentRepository.save(payment);
     }
 
-    private String formatDate(LocalDate date) {
-        return date.format(DateTimeFormatter.ISO_LOCAL_DATE);
+    private PaymentGetResponseDto processCreditCardPayment(Donor donor, CreateDonationDTO data) {
+        CreditCardRequestDto card = CreditCardRequestDto.builder()
+                .holderName(data.creditCardDetails().holderName())
+                .number(data.creditCardDetails().number())
+                .expiryMonth(data.creditCardDetails().expiryMonth())
+                .expiryYear(data.creditCardDetails().expiryYear())
+                .ccv(data.creditCardDetails().ccv())
+                .build();
+
+        CreditCardHolderInfoRequestDto holderInfo = buildHolderInfo(donor);
+
+        PaymentSaveWithCreditCardRequestDto request = PaymentSaveWithCreditCardRequestDto.builder()
+                .customer(donor.getExternalId())
+                .billingType(PaymentSaveWithCreditCardRequestBillingType.CREDIT_CARD)
+                .value(data.amount().doubleValue())
+                .dueDate(getTodayIsoDate())
+                .description(data.message())
+                .creditCard(card)
+                .creditCardHolderInfo(holderInfo)
+                .remoteIp("0.0.0.0")
+                .authorizeOnly(false)
+                .build();
+
+        return asaasSdk.payment.createNewPaymentWithCreditCard(request);
     }
 
+    private PaymentGetResponseDto processPixPayment(Donor donor, CreateDonationDTO data) {
+        PaymentSaveRequestDto request = PaymentSaveRequestDto.builder()
+                .customer(donor.getExternalId())
+                .billingType(PaymentSaveRequestBillingType.PIX)
+                .value(data.amount().doubleValue())
+                .dueDate(getTodayIsoDate())
+                .description(data.message())
+                .build();
+
+        return asaasSdk.payment.createNewPayment(request);
+    }
+
+    private void updatePixQrCodeLink(Payment payment, PaymentGetResponseDto response) {
+        payment.setExternalReference(response.getId());
+
+        payment.setPaymentUrl(response.getInvoiceUrl());
+
+        if ("PIX".equalsIgnoreCase(payment.getBillingType())) {
+            try {
+                PaymentPixQrCodeResponseDto qrCode = asaasSdk.payment.getQrCodeForPixPayments(response.getId());
+
+                payment.setPaymentUrl(qrCode.getPayload());
+
+            } catch (Exception e) {
+                System.out.println("Não foi possível buscar o Payload do Pix.");
+            }
+        }
+    }
+
+    private CreditCardHolderInfoRequestDto buildHolderInfo(Donor donor) {
+        return CreditCardHolderInfoRequestDto.builder()
+                .name(donor.getName())
+                .email(donor.getEmail())
+                .cpfCnpj(donor.getDocument())
+                .postalCode("00000000")
+                .addressNumber("0")
+                .phone("11999999999")
+                .build();
+    }
+
+    private String getTodayIsoDate() {
+        return LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+    }
 }
