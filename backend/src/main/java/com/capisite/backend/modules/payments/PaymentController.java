@@ -23,17 +23,12 @@ public class PaymentController {
 
     @PostMapping
     public ResponseEntity<PaymentResponseDTO> create(@RequestBody @Validated CreateDonationDTO dto) {
-        Payment payment = paymentService.createPayment(dto);
 
-        var response = new PaymentResponseDTO(
-            payment.getId(),
-            payment.getStatus().toString(),
-            payment.getPaymentUrl(),
-            payment.getAmount(),
-            payment.getExternalReference()
-        );
+        var payment = paymentService.createPayment(dto);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(PaymentResponseDTO.from(payment));
     }
 
 }
