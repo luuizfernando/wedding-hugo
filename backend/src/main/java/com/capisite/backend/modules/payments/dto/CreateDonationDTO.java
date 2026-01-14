@@ -1,26 +1,31 @@
 package com.capisite.backend.modules.payments.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
+
 import java.math.BigDecimal;
 
-import org.intellij.lang.annotations.Pattern;
-import org.jetbrains.annotations.NotNull;
-
 public record CreateDonationDTO(
-    
-    @NotNull(value = "O nome é obrigatório")
-    String name,
 
-    @NotNull(value = "O documento é obrigatório")
-    String document,
+        @NotBlank(message = "O nome é obrigatório")
+        String name,
 
-    String email,
+        @NotBlank(message = "O documento é obrigatório")
+        String document,
 
-    @NotNull(value = "O valor é obrigatório")
-    BigDecimal amount,
+        String email,
 
-    @Pattern(value = "PIX|BOLETO|CREDIT_CARD")
-    String billingType,
+        @NotNull(message = "O valor é obrigatório")
+        BigDecimal amount,
 
-    String message
-    
+        @Pattern(regexp = "PIX|BOLETO|CREDIT_CARD|UNDEFINED", message = "Tipo de pagamento inválido")
+        String billingType,
+
+        String message,
+
+        @Valid
+        CreditCardDetailsDTO creditCardDetails
+
 ) {}
