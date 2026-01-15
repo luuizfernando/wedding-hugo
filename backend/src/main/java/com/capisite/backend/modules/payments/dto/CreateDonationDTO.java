@@ -25,6 +25,8 @@ public record CreateDonationDTO(
 
         String message,
 
+        String clientIp,
+
         @Valid
         CreditCardDetailsDTO creditCardDetails
 

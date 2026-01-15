@@ -31,13 +31,13 @@ public class PaymentService {
     }
 
     @Transactional
-    public Payment createPayment(CreateDonationDTO data) {
+    public Payment createPayment(CreateDonationDTO data, String clientIp) {
         Donor donor = setupDonor(data);
         Payment payment = initializePayment(donor, data);
 
         try {
             PaymentGetResponseDto asaasResponse = switch (data.billingType().toUpperCase()) {
-                case "CREDIT_CARD" -> processCreditCardPayment(donor, data);
+                case "CREDIT_CARD" -> processCreditCardPayment(donor, data, clientIp);
                 case "PIX" -> processPixPayment(donor, data);
                 default -> throw new IllegalArgumentException("Método não suportado: " + data.billingType());
             };
@@ -87,7 +87,7 @@ public class PaymentService {
         return paymentRepository.save(payment);
     }
 
-    private PaymentGetResponseDto processCreditCardPayment(Donor donor, CreateDonationDTO data) {
+    private PaymentGetResponseDto processCreditCardPayment(Donor donor, CreateDonationDTO data, String clientIp) {
         if (data.creditCardDetails() == null) {
             throw new IllegalArgumentException("Dados do cartão são obrigatórios para crédito.");
         }
@@ -110,7 +110,7 @@ public class PaymentService {
                 .description(data.message())
                 .creditCard(card)
                 .creditCardHolderInfo(holderInfo)
-                .remoteIp("0.0.0.0")
+                .remoteIp(clientIp)
                 .authorizeOnly(false)
                 .build();
 
