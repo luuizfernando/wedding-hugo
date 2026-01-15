@@ -17,12 +17,23 @@ public class DonorService {
 
     @Transactional
     public Donor findOrCreateDonor(CreateDonorDTO data) {
-        String cleanedDocument = data.document().replaceAll("\\D", "");
+        String cleanedDocument = cleanDocument(data.document());
         return donorRepository.findByDocument(cleanedDocument)
-                .orElseGet(() -> donorRepository.save(
-                        new Donor(data.name(), data.email(), cleanedDocument)
-                    )
-                );
+                .orElseGet(() -> createNewDonor(data, cleanedDocument));
+    }
+
+    private String cleanDocument(String document) {
+        return document.replaceAll("\\D", "");
+    }
+
+    private Donor createNewDonor(CreateDonorDTO data, String cleanedDocument) {
+        Donor newDonor = new Donor(
+                data.name(),
+                data.email(),
+                cleanedDocument
+        );
+
+        return donorRepository.save(newDonor);
     }
 
 }
