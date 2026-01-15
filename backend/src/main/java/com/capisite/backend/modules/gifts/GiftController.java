@@ -33,10 +33,10 @@ public class GiftController {
         return ResponseEntity.ok(gift);
     }
 
-    @PostMapping
-    public ResponseEntity<Gift> createGift(@RequestBody Gift gift) {
-        Gift createdGift = giftService.createGift(gift);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdGift);
-    }
+//    @PostMapping
+//    public ResponseEntity<Gift> createGift(@RequestBody Gift gift) {
+//        Gift createdGift = giftService.createGift(gift);
+//        return ResponseEntity.status(HttpStatus.CREATED).body(createdGift);
+//    }
 
 }
