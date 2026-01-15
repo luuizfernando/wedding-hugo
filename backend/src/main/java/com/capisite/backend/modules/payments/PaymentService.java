@@ -2,6 +2,8 @@ package com.capisite.backend.modules.payments;
 
 import com.asaas.apisdk.AsaasSdk;
 import com.asaas.apisdk.models.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.capisite.backend.modules.donors.Donor;
@@ -16,6 +18,8 @@ import java.time.format.DateTimeFormatter;
 @Service
 public class PaymentService {
 
+    private final Logger logger = LoggerFactory.getLogger(PaymentService.class);
+
     private final PaymentRepository paymentRepository;
     private final DonorService donorService;
     private final AsaasSdk asaasSdk;
@@ -29,24 +33,18 @@ public class PaymentService {
     @Transactional
     public Payment createPayment(CreateDonationDTO data) {
         Donor donor = setupDonor(data);
-
         Payment payment = initializePayment(donor, data);
 
         try {
-            PaymentGetResponseDto asaasResponse;
-
-            if ("CREDIT_CARD".equalsIgnoreCase(data.billingType())) {
-                asaasResponse = processCreditCardPayment(donor, data);
-            } else if ("PIX".equalsIgnoreCase(data.billingType())) {
-                asaasResponse = processPixPayment(donor, data);
-            } else {
-                throw new IllegalArgumentException("Método de pagamento não suportado: " + data.billingType());
-            }
-
-            updatePixQrCodeLink(payment, asaasResponse);
-
+            PaymentGetResponseDto asaasResponse = switch (data.billingType().toUpperCase()) {
+                case "CREDIT_CARD" -> processCreditCardPayment(donor, data);
+                case "PIX" -> processPixPayment(donor, data);
+                default -> throw new IllegalArgumentException("Método não suportado: " + data.billingType());
+            };
+            enrichPaymentData(payment, asaasResponse);
         } catch (Exception e) {
-            throw new RuntimeException("Falha na integração com Asaas: " + e.getMessage(), e);
+            logger.error("Erro na integração Asaas para o doador {}: {}", donor.getEmail(), e.getMessage());
+            throw new RuntimeException("Falha ao processar pagamento: " + e.getMessage());
         }
 
         return paymentRepository.save(payment);
@@ -74,6 +72,7 @@ public class PaymentService {
             CustomerGetResponseDto response = asaasSdk.customer.createNewCustomer(request);
             donor.setExternalId(response.getId());
         } catch (Exception e) {
+            logger.error("Falha ao criar Customer Asaas", e);
             throw new RuntimeException("Erro ao criar cliente no Asaas: " + e.getMessage());
         }
     }
@@ -89,6 +88,10 @@ public class PaymentService {
     }
 
     private PaymentGetResponseDto processCreditCardPayment(Donor donor, CreateDonationDTO data) {
+        if (data.creditCardDetails() == null) {
+            throw new IllegalArgumentException("Dados do cartão são obrigatórios para crédito.");
+        }
+
         CreditCardRequestDto card = CreditCardRequestDto.builder()
                 .holderName(data.creditCardDetails().holderName())
                 .number(data.creditCardDetails().number())
@@ -126,7 +129,7 @@ public class PaymentService {
         return asaasSdk.payment.createNewPayment(request);
     }
 
-    private void updatePixQrCodeLink(Payment payment, PaymentGetResponseDto response) {
+    private void enrichPaymentData(Payment payment, PaymentGetResponseDto response) {
         payment.setExternalReference(response.getId());
 
         payment.setPaymentUrl(response.getInvoiceUrl());
@@ -136,9 +139,8 @@ public class PaymentService {
                 PaymentPixQrCodeResponseDto qrCode = asaasSdk.payment.getQrCodeForPixPayments(response.getId());
 
                 payment.setPaymentUrl(qrCode.getPayload());
-
             } catch (Exception e) {
-                System.out.println("Não foi possível buscar o Payload do Pix.");
+                logger.warn("Não foi possível obter payload Pix (ID: {}). Usando InvoiceUrl.", response.getId());
             }
         }
     }

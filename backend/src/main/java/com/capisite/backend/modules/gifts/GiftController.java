@@ -22,21 +22,21 @@ public class GiftController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Gift>> getAllProducts() {
-        List<Gift> products = giftService.getAllProducts();
-        return ResponseEntity.ok(products);
+    public ResponseEntity<List<Gift>> getAllGifts() {
+        List<Gift> gifts = giftService.getAllGifts();
+        return ResponseEntity.ok(gifts);
     }
     
     @GetMapping("/{id}")
-    public ResponseEntity<Gift> getProductById(@PathVariable Long id) {
-        Gift product = giftService.getProductById(id);
-        return ResponseEntity.ok(product);
+    public ResponseEntity<Gift> getGiftById(@PathVariable Long id) {
+        Gift gift = giftService.getGiftById(id);
+        return ResponseEntity.ok(gift);
     }
 
     @PostMapping
-    public ResponseEntity<Gift> createProduct(@RequestBody Gift product) {
-        Gift createdProduct = giftService.createProduct(product);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdProduct);
+    public ResponseEntity<Gift> createGift(@RequestBody Gift gift) {
+        Gift createdGift = giftService.createGift(gift);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdGift);
     }
 
 }
